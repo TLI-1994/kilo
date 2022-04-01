@@ -4,8 +4,9 @@ let with_raw_mode fn =
   let open Unix in
   let termios = tcgetattr stdin in
   tcsetattr stdin TCSAFLUSH
-  (* how to turn off IEXTEN ? *)
-    { termios with
+    (* how to turn off IEXTEN ? *)
+    {
+      termios with
       c_brkint = false;
       c_inpck = false;
       c_istrip = false;
@@ -38,12 +39,14 @@ module Escape_command = struct
   let hide_cursor = "\x1b[?25l"
   let show_cursor = "\x1b[?25h"
   let erase_right_of_cursor = "\x1b[K"
+
   (* y and x are indexes that start from 0 *)
-  let move_cursor y x = sprintf "\x1b[%d;%dH" (y+1) (x+1)
+  let move_cursor y x = sprintf "\x1b[%d;%dH" (y + 1) (x + 1)
   let bold_text s = sprintf "\x1b[1m%s\x1b[m" s
   let underlined_text s = sprintf "\x1b[4m%s\x1b[m" s
   let blinking_text s = sprintf "\x1b[5m%s\x1b[m" s
   let inverted_text s = sprintf "\x1b[7m%s\x1b[m" s
+
   let color = function
     | Default -> "\x1b[39m\x1b[m"
     | Red -> "\x1b[31m"
@@ -87,7 +90,7 @@ type key =
 let read_key () =
   try
     let c = input_char stdin in
-    if c = '\x1b' (* escape *) then begin
+    if c = '\x1b' (* escape *) then
       try
         let first = input_char stdin in
         let second = input_char stdin in
@@ -98,9 +101,9 @@ let read_key () =
         | '[', 'D' -> Arrow_left
         | '[', 'H' -> Home
         | '[', 'F' -> End
-        | '[', second when '0' <= second && second <= '9' ->
+        | '[', second when '0' <= second && second <= '9' -> (
             let third = input_char stdin in
-            (match (second, third) with
+            match (second, third) with
             | '1', '~' -> Home
             | '3', '~' -> Del
             | '4', '~' -> End
@@ -113,11 +116,12 @@ let read_key () =
         | 'O', 'F' -> End
         | _, _ -> Esc
       with End_of_file (* time out *) -> Esc
-    end else
+    else
       match c with
       | '\r' -> Enter
       | '\x7f' -> Backspace
       | '\t' -> Tab
-      | c when '\x01' <= c && c <= '\x1a' -> Ctrl (Char.chr (Char.code c + 64))
+      | c when '\x01' <= c && c <= '\x1a' ->
+          Ctrl (Char.chr (Char.code c + 64))
       | _ -> Ch c
   with End_of_file -> Nothing

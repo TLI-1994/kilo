@@ -3,29 +3,24 @@ module S = BatString
 
 (* TODO: 行ごとの内容をgap bufferで保持する *)
 type t = {
-  first_row: string DL.t;
-  mutable curr_row: string DL.t;
-  mutable curr_rownum: int;
+  first_row : string DL.t;
+  mutable curr_row : string DL.t;
+  mutable curr_rownum : int;
 }
 
 let create s =
   let row = DL.create s in
-  { first_row = row;
-    curr_row = row;
-    curr_rownum = 0;
-  }
+  { first_row = row; curr_row = row; curr_rownum = 0 }
 
 let visual_tab = S.make Settings.kilo_tabstop ' '
-let render raw_text =
-  S.nreplace ~str:raw_text ~sub:"\t" ~by:visual_tab
+let render raw_text = S.nreplace ~str:raw_text ~sub:"\t" ~by:visual_tab
 
 let to_visual_x raw_text x =
   let vx = ref 0 in
   for i = 0 to x - 1 do
     if i < S.length raw_text && S.get raw_text i = '\t' then
       vx := !vx + Settings.kilo_tabstop
-    else
-      vx := !vx + 1
+    else vx := !vx + 1
   done;
   !vx
 
@@ -35,25 +30,22 @@ let to_real_x raw_text vx =
   while !i < vx do
     if !x < S.length raw_text && S.get raw_text !x = '\t' then
       i := !i + Settings.kilo_tabstop
-    else
-      i := !i + 1;
-    if !i <= vx then
-      x := !x + 1
+    else i := !i + 1;
+    if !i <= vx then x := !x + 1
   done;
   !x
 
-let%test_module "Renderer test" = (module struct
-  let%test "render" =
-    render "hoge\tfuga" = "hoge        fuga"
-
-  let%test _ = to_visual_x "hoge\tfuga" 9 = 16
-  let%test _ = to_visual_x "hoge\tfuga" 3 = 3
-  let%test _ = to_visual_x "hoge\tfuga" 6 = 13
-  let%test _ = to_real_x "hoge\tfuga" 3 = 3
-  let%test _ = to_real_x "hoge\tfuga" 13 = 6
-  let%test _ = to_real_x "hoge\tfuga" 11 = 4
-  let%test _ = to_real_x "hoge\tfuga" 16 = 9
-end)
+let%test_module "Renderer test" =
+  (module struct
+    let%test "render" = render "hoge\tfuga" = "hoge        fuga"
+    let%test _ = to_visual_x "hoge\tfuga" 9 = 16
+    let%test _ = to_visual_x "hoge\tfuga" 3 = 3
+    let%test _ = to_visual_x "hoge\tfuga" 6 = 13
+    let%test _ = to_real_x "hoge\tfuga" 3 = 3
+    let%test _ = to_real_x "hoge\tfuga" 13 = 6
+    let%test _ = to_real_x "hoge\tfuga" 11 = 4
+    let%test _ = to_real_x "hoge\tfuga" 16 = 9
+  end)
 
 let rows t = DL.length t.first_row
 
@@ -63,12 +55,11 @@ let move t y =
     let dy = y - t.curr_rownum in
     t.curr_row <- DL.skip t.curr_row dy;
     t.curr_rownum <- y
-  end else
-    assert false (* for debug *)
+  end
+  else assert false (* for debug *)
 
 let cols t y =
-  if y < 0 || rows t <= y then
-    0
+  if y < 0 || rows t <= y then 0
   else begin
     move t y;
     S.length (DL.get t.curr_row |> render)
@@ -84,8 +75,8 @@ let delete_row t y =
     DL.remove t.curr_row;
     t.curr_row <- DL.prev t.first_row;
     t.curr_rownum <- y - 1
-  end else
-    t.curr_row <- DL.drop t.curr_row
+  end
+  else t.curr_row <- DL.drop t.curr_row
 
 let join_row t y =
   if y < rows t - 1 then begin
@@ -107,13 +98,14 @@ let insert_char t c ~y ~x =
   move t y;
   let row = DL.get t.curr_row in
   let x = to_real_x row x in
-  DL.set t.curr_row @@ (S.slice ~last:x row) ^ (S.make 1 c) ^ (S.slice ~first:x row)
+  DL.set t.curr_row @@ S.slice ~last:x row ^ S.make 1 c
+  ^ S.slice ~first:x row
 
 let delete_char t ~y ~x =
   move t y;
   let row = DL.get t.curr_row in
   let x = to_real_x row x in
-  DL.set t.curr_row @@ (S.slice ~last:x row) ^ (S.slice ~first:(x+1) row)
+  DL.set t.curr_row @@ S.slice ~last:x row ^ S.slice ~first:(x + 1) row
 
 let get_row t y =
   move t y;
@@ -123,30 +115,22 @@ let get_sub t ~y ~x ~len =
   move t y;
   let row = DL.get t.curr_row |> render in
   let row_len = S.length row in
-  if row_len <= x then
-    ""
-  else
-    StringLabels.sub row ~pos:x ~len:(BatInt.min len (row_len - x))
+  if row_len <= x then ""
+  else StringLabels.sub row ~pos:x ~len:(BatInt.min len (row_len - x))
 
 let get_position_in_row t y query =
   move t y;
   let row = DL.get t.curr_row in
-  try
-    BatString.find row query |> to_visual_x row
-  with Not_found -> -1
+  try BatString.find row query |> to_visual_x row with Not_found -> -1
 
 let is_tab t ~y ~x =
   move t y;
   let curr = DL.get t.curr_row in
   let x = to_real_x curr x in
-  if x < 0 || S.length curr <= x then
-    false
-  else
-    curr.[x] = '\t'
+  if x < 0 || S.length curr <= x then false else curr.[x] = '\t'
 
 let adjust_x_pos t ~y ~x =
-  if y < 0 || rows t <= y then
-    0
+  if y < 0 || rows t <= y then 0
   else begin
     move t y;
     let curr = DL.get t.curr_row in
@@ -157,32 +141,32 @@ let to_string t =
   let open Settings in
   S.concat kilo_linesep (DL.to_list t.first_row) ^ kilo_linesep
 
-let%test_module "tests" = (module struct
-  let%test_unit _ =
-    let b = create "hoge" in
-    append_row b 0 "fuga";
-    append_row b 1 "piyo";
-    assert (to_string b = {|hoge
+let%test_module "tests" =
+  (module struct
+    let%test_unit _ =
+      let b = create "hoge" in
+      append_row b 0 "fuga";
+      append_row b 1 "piyo";
+      assert (to_string b = {|hoge
 fuga
 piyo
 |});
 
-    join_row b 1;
-    assert (to_string b = {|hoge
+      join_row b 1;
+      assert (to_string b = {|hoge
 fugapiyo
 |});
 
-    insert_newline b ~y:1 ~x:2;
-    assert (to_string b = {|hoge
+      insert_newline b ~y:1 ~x:2;
+      assert (to_string b = {|hoge
 fu
 gapiyo
 |});
 
-    insert_newline b ~y:0 ~x:0;
-    assert (to_string b = {|
+      insert_newline b ~y:0 ~x:0;
+      assert (to_string b = {|
 hoge
 fu
 gapiyo
 |})
-
-end)
+  end)
