@@ -185,7 +185,9 @@ let move_cursor t dir =
   in
   (* update y first because the max length of row depends on t.cy *)
   t.cy <-
-    (if cy < 0 then 0 else if cy > rows t.buf then rows t.buf else cy);
+    (if cy < 0 then 0
+    else if cy > rows t.buf - 1 then rows t.buf - 1
+    else cy);
   let cx =
     if cx < 0 then 0
     else if cx > cols t.buf t.cy then cols t.buf t.cy
